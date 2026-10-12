@@ -1,8 +1,19 @@
 openapi: 3.0.3
-info: {title: Tasks API, version: 1.0.0, description: Quản lý task nội bộ}
-servers: [{url: 'http://localhost:5000/v1'}]
-security: [{bearerAuth: []}]
-tags: [{name: tasks}]
+
+info:
+  title: Tasks API
+  version: 1.0.0
+  description: Quản lý task nội bộ
+
+servers:
+  - url: http://localhost:5000/v1
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: tasks
+
 paths:
   /tasks:
     get:
@@ -14,75 +25,252 @@ paths:
         - $ref: '#/components/parameters/PageLimit'
         - $ref: '#/components/parameters/StatusFilter'
       responses:
-        '200': {$ref: '#/components/responses/TaskPage'}
-        '400': {$ref: '#/components/responses/BadRequest'}
+        '200':
+          $ref: '#/components/responses/TaskPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+    post:
+      tags: [tasks]
+      operationId: createTask
+      summary: Tạo task mới
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskInput'
+            example:
+              title: Hoàn thành bài tập API
+              status: open
+              priority: high
+              dueDate: '2026-10-20'
+              assigneeId: u-1003
+      responses:
+        '201':
+          description: Tạo task thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+              example:
+                id: 8a7e1b5c-1234-4567-8901-123456789abc
+                title: Hoàn thành bài tập API
+                status: open
+                priority: high
+                dueDate: '2026-10-20'
+                assigneeId: u-1003
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /tasks/{taskId}:
     parameters:
       - in: path
         name: taskId
         required: true
-        schema: {type: string, format: uuid}
+        schema:
+          type: string
+          format: uuid
         example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+
     get:
       tags: [tasks]
       operationId: getTaskById
       summary: Lấy chi tiết một task
-      security: [{bearerAuth: []}]
+      security:
+        - bearerAuth: []
       responses:
-        '200': {$ref: '#/components/responses/Task'}
-        '401': {$ref: '#/components/responses/Unauthorized'}
-        '404': {$ref: '#/components/responses/NotFound'}
+        '200':
+          $ref: '#/components/responses/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [tasks]
+      operationId: updateTask
+      summary: Cập nhật một phần thông tin task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskInput'
+            example:
+              title: Test API - updated
+              status: done
+      responses:
+        '200':
+          description: Cập nhật task thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+              example:
+                id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                title: Test API - updated
+                status: done
+                priority: high
+                dueDate: '2026-10-20'
+                assigneeId: u-1003
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
   parameters:
     PageLimit:
       name: limit
       in: query
       description: Số task tối đa trả về
-      schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
       example: 20
+
     StatusFilter:
       name: status
       in: query
       description: Lọc theo trạng thái
-      schema: {type: string, enum: [open, done]}
+      schema:
+        type: string
+        enum: [open, done]
       example: open
+
   schemas:
     Task:
       type: object
-      required: [id, title, status]
+      required: [id, title, status, priority, dueDate, assigneeId]
       properties:
-        id: {type: string, format: uuid, example: 3fa85f64-5717-4562-b3fc-2c963f66afa6}
-        title: {type: string, minLength: 1, example: Họp nhóm API team}
-        status: {type: string, enum: [open, done], example: open}
-        priority: {type: string, enum: [low, normal, high], example: high}
-        dueDate: {type: string, format: date, example: '2026-10-15'}
-        assigneeId: {type: string, example: u-1001}
+        id:
+          type: string
+          format: uuid
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        title:
+          type: string
+          minLength: 1
+          example: Họp nhóm API team
+        status:
+          type: string
+          enum: [open, done]
+          example: open
+        priority:
+          type: string
+          enum: [low, normal, high]
+          example: high
+        dueDate:
+          type: string
+          format: date
+          nullable: true
+          example: '2026-10-15'
+        assigneeId:
+          type: string
+          nullable: true
+          example: u-1001
+
+    CreateTaskInput:
+      type: object
+      required: [title]
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          minLength: 1
+          example: Hoàn thành bài tập API
+        status:
+          type: string
+          enum: [open, done]
+          default: open
+          example: open
+        priority:
+          type: string
+          enum: [low, normal, high]
+          default: normal
+          example: high
+        dueDate:
+          type: string
+          format: date
+          nullable: true
+          example: '2026-10-20'
+        assigneeId:
+          type: string
+          nullable: true
+          example: u-1003
+
+    UpdateTaskInput:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          minLength: 1
+          example: Test API - updated
+        status:
+          type: string
+          enum: [open, done]
+          example: done
+        priority:
+          type: string
+          enum: [low, normal, high]
+          example: high
+        dueDate:
+          type: string
+          format: date
+          nullable: true
+          example: '2026-10-20'
+        assigneeId:
+          type: string
+          nullable: true
+          example: u-1003
+
     TaskList:
       type: object
       required: [items, total]
       properties:
         items:
           type: array
-          items: {$ref: '#/components/schemas/Task'}
-        total: {type: integer, example: 2}
+          items:
+            $ref: '#/components/schemas/Task'
+        total:
+          type: integer
+          example: 2
+
     Error:
       type: object
       required: [status, title]
       properties:
-        title: {type: string, example: Task not found}
-        status: {type: integer, example: 404}
-        detail: {type: string, example: Không tìm thấy task với id đã cho}
+        title:
+          type: string
+          example: Task not found
+        status:
+          type: integer
+          example: 404
+        detail:
+          type: string
+          example: Không tìm thấy task với id đã cho
+
   responses:
     TaskPage:
       description: Danh sách task
       content:
         application/json:
-          schema: {$ref: '#/components/schemas/TaskList'}
+          schema:
+            $ref: '#/components/schemas/TaskList'
           example:
             items:
               - id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
@@ -98,11 +286,13 @@ components:
                 dueDate: '2026-10-10'
                 assigneeId: u-1002
             total: 2
+
     Task:
       description: Thông tin một task
       content:
         application/json:
-          schema: {$ref: '#/components/schemas/Task'}
+          schema:
+            $ref: '#/components/schemas/Task'
           example:
             id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
             title: Họp nhóm API team
@@ -110,21 +300,36 @@ components:
             priority: high
             dueDate: '2026-10-15'
             assigneeId: u-1001
+
     BadRequest:
-      description: Tham số không hợp lệ
+      description: Dữ liệu hoặc tham số không hợp lệ
       content:
         application/json:
-          schema: {$ref: '#/components/schemas/Error'}
-          example: {title: Bad request, status: 400, detail: limit phải nằm trong khoảng 1 đến 100}
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            title: Bad request
+            status: 400
+            detail: title là bắt buộc và không được để trống
+
     Unauthorized:
       description: Thiếu hoặc sai Bearer token
       content:
         application/json:
-          schema: {$ref: '#/components/schemas/Error'}
-          example: {title: Unauthorized, status: 401, detail: Thiếu hoặc sai Bearer token}
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            title: Unauthorized
+            status: 401
+            detail: Thiếu hoặc sai Bearer token
+
     NotFound:
       description: Không tìm thấy task
       content:
         application/json:
-          schema: {$ref: '#/components/schemas/Error'}
-          example: {title: Task not found, status: 404, detail: Không tìm thấy task với id đã cho}
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            title: Task not found
+            status: 404
+            detail: Không tìm thấy task với id đã cho
