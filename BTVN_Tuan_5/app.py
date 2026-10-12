@@ -162,20 +162,24 @@ def update_task(task_id):
     if set(data) - allowed_fields:
         return error(400, "Bad request", "Request chứa trường không hợp lệ")
 
+    updates = {}
     if "title" in data:
-        if not isinstance(data["title"], str) or not data["title"].strip():
+        title = data["title"]
+        if not isinstance(title, str) or not title.strip():
             return error(400, "Bad request", "title không được để trống")
-        task["title"] = data["title"].strip()
+        updates["title"] = title.strip()
 
     if "status" in data:
-        if not isinstance(data["status"], str) or data["status"] not in STATUSES:
+        status = data["status"]
+        if not isinstance(status, str) or status not in STATUSES:
             return error(400, "Bad request", "status phải là open hoặc done")
-        task["status"] = data["status"]
+        updates["status"] = status
 
     if "priority" in data:
-        if not isinstance(data["priority"], str) or data["priority"] not in {"low", "normal", "high"}:
+        priority = data["priority"]
+        if not isinstance(priority, str) or priority not in {"low", "normal", "high"}:
             return error(400, "Bad request", "priority phải là low, normal hoặc high")
-        task["priority"] = data["priority"]
+        updates["priority"] = priority
 
     if "dueDate" in data:
         due_date = data["dueDate"]
@@ -186,14 +190,15 @@ def update_task(task_id):
                 date.fromisoformat(due_date)
             except ValueError:
                 return error(400, "Bad request", "dueDate phải có định dạng YYYY-MM-DD")
-        task["dueDate"] = due_date
+        updates["dueDate"] = due_date
 
     if "assigneeId" in data:
         assignee_id = data["assigneeId"]
         if assignee_id is not None and not isinstance(assignee_id, str):
             return error(400, "Bad request", "assigneeId phải là chuỗi hoặc null")
-        task["assigneeId"] = assignee_id
+        updates["assigneeId"] = assignee_id
 
+    task.update(updates)
     return jsonify(task), 200
 
 
