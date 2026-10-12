@@ -264,7 +264,7 @@ components:
 
     Error:
       type: object
-      required: [status, title]
+      required: [status, title, detail]
       properties:
         title:
           type: string
