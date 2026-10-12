@@ -196,5 +196,18 @@ def update_task(task_id):
 
     return jsonify(task), 200
 
+
+@app.delete("/v1/tasks/<task_id>")
+def delete_task(task_id):
+    if not has_bearer():
+        return error(401, "Unauthorized", "Thiếu hoặc sai ******")
+
+    if task_id not in TASKS:
+        return error(404, "Task not found", "Không tìm thấy task với id đã cho")
+
+    del TASKS[task_id]
+    return "", 204
+
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)

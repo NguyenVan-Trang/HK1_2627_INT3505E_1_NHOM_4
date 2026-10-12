@@ -123,6 +123,18 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+    delete:
+      tags: [tasks]
+      operationId: deleteTask
+      summary: Xóa task
+      responses:
+        '204':
+          description: Xóa task thành công
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
 components:
   securitySchemes:
     bearerAuth:
