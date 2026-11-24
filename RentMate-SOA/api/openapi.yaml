@@ -1,0 +1,338 @@
+
+openapi: 3.0.3
+
+info:
+  title: RentMate API
+  version: 1.0.0
+  description: |
+    Core API for RentMate - a peer-to-peer rental marketplace.
+    This API focuses on the main item discovery and rental workflow.
+
+servers:
+  - url: http://localhost:5000/api/v1
+    description: Local development server
+
+tags:
+  - name: Items
+    description: Browse rental items
+  - name: Rental Requests
+    description: Create and manage rental requests
+  - name: Rentals
+    description: View rental transactions
+
+paths:
+  /items:
+    get:
+      tags:
+        - Items
+      summary: Get all available items
+      operationId: listItems
+      parameters:
+        - name: q
+          in: query
+          description: Search items by title
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Items retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Item'
+
+  /items/{itemId}:
+    get:
+      tags:
+        - Items
+      summary: Get item details
+      operationId: getItem
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Item details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Item'
+        '404':
+          description: Item not found
+
+  /rental-requests:
+    post:
+      tags:
+        - Rental Requests
+      summary: Create a rental request
+      operationId: createRentalRequest
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RentalRequestCreate'
+            example:
+              itemId: 550e8400-e29b-41d4-a716-446655440000
+              startDate: '2026-12-01'
+              endDate: '2026-12-05'
+              message: I would like to rent this item.
+      responses:
+        '201':
+          description: Rental request created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RentalRequest'
+        '400':
+          description: Invalid rental request
+        '401':
+          description: Authentication required
+        '409':
+          description: Rental period is unavailable
+
+  /rental-requests/{requestId}:
+    patch:
+      tags:
+        - Rental Requests
+      summary: Approve or reject a rental request
+      operationId: decideRentalRequest
+      description: Only the owner of the item can make this decision.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - decision
+              properties:
+                decision:
+                  type: string
+                  enum:
+                    - APPROVED
+                    - REJECTED
+                ownerNote:
+                  type: string
+            example:
+              decision: APPROVED
+              ownerNote: Your request is accepted.
+      responses:
+        '200':
+          description: Rental request decision processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      request:
+                        $ref: '#/components/schemas/RentalRequest'
+                      rental:
+                        $ref: '#/components/schemas/Rental'
+        '401':
+          description: Authentication required
+        '403':
+          description: Only the item owner can decide this request
+        '404':
+          description: Rental request not found
+        '409':
+          description: Request is no longer pending or rental period conflicts
+
+  /rentals/{rentalId}:
+    get:
+      tags:
+        - Rentals
+      summary: Get rental details
+      operationId: getRental
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: rentalId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Rental details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Rental'
+        '401':
+          description: Authentication required
+        '403':
+          description: User is not involved in this rental
+        '404':
+          description: Rental not found
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Item:
+      type: object
+      required:
+        - itemId
+        - ownerId
+        - title
+        - category
+        - dailyPrice
+        - status
+      properties:
+        itemId:
+          type: string
+          format: uuid
+        ownerId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        dailyPrice:
+          type: number
+          minimum: 0.01
+        deposit:
+          type: number
+          minimum: 0
+        status:
+          type: string
+          enum:
+            - ACTIVE
+            - INACTIVE
+
+    RentalRequestCreate:
+      type: object
+      required:
+        - itemId
+        - startDate
+        - endDate
+      properties:
+        itemId:
+          type: string
+          format: uuid
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        message:
+          type: string
+
+    RentalRequest:
+      type: object
+      required:
+        - requestId
+        - itemId
+        - renterId
+        - startDate
+        - endDate
+        - status
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        itemId:
+          type: string
+          format: uuid
+        renterId:
+          type: string
+          format: uuid
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum:
+            - PENDING
+            - APPROVED
+            - REJECTED
+        message:
+          type: string
+
+    Rental:
+      type: object
+      required:
+        - rentalId
+        - requestId
+        - itemId
+        - renterId
+        - ownerId
+        - status
+      properties:
+        rentalId:
+          type: string
+          format: uuid
+        requestId:
+          type: string
+          format: uuid
+        itemId:
+          type: string
+          format: uuid
+        renterId:
+          type: string
+          format: uuid
+        ownerId:
+          type: string
+          format: uuid
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum:
+            - CONFIRMED
+            - ACTIVE
+            - COMPLETED
+            - CANCELLED
