@@ -2,10 +2,8 @@
 
 **Dự án:** RentMate — Peer-to-Peer Rental Platform  
 **Tuần báo cáo:** Tuần 12 — Design Review  
-**Quy mô nhóm:** 3 thành viên  
-**Thời gian dự án:** 4 tuần  
+**Quy mô nhóm:** 3 thành viên - Đào Quang Huy, Trần Mạnh Đức, Nguyễn Văn Tráng  
 
----
 
 ## 1. Mục tiêu trong tuần
 
@@ -16,7 +14,6 @@
 - Thiết kế API Contract và phân chia nhiệm vụ cho các thành viên.
 - Chuẩn bị nội dung Design Review.
 
----
 
 ## 2. Công việc đã thực hiện
 
@@ -62,7 +59,6 @@
 - Xây dựng kế hoạch phát triển trong 4 tuần.
 - Chuẩn bị nội dung trình bày Design Review.
 
----
 
 ## 3. Công việc chưa hoàn thành
 
@@ -78,7 +74,6 @@
 | Kiểm thử nghiệp vụ | Chưa hoàn thành | Thực hiện sau khi có API |
 | Kiểm thử End-to-End | Chưa hoàn thành | Kiểm thử luồng thuê hoàn chỉnh |
 
----
 
 ## 4. Nhiệm vụ cá nhân
 
@@ -103,7 +98,6 @@
 - Hoàn thiện Item API.
 - Kiểm thử API bằng Postman.
 
----
 
 ### Thành viên 2 — Rental Business Logic
 
@@ -126,7 +120,6 @@
 - Kiểm tra ngày thuê và xung đột lịch.
 - Đảm bảo một yêu cầu được duyệt chỉ tạo tối đa một Rental.
 
----
 
 ### Thành viên 3 — Frontend, Integration & Documentation
 
@@ -153,7 +146,6 @@
 - Tích hợp GET `/items` và GET `/items/{itemId}` khi Backend sẵn sàng.
 - Cập nhật README về cách cài đặt và chạy dự án.
 
----
 
 ## 5. Vấn đề cần hỗ trợ
 
@@ -165,7 +157,6 @@
 - Hỗ trợ thành viên trong quá trình tích hợp Frontend và Backend.
 - Review code và kiểm thử các API sau khi triển khai.
 
----
 
 ## 6. Kế hoạch thực tế cho tuần tiếp theo
 
@@ -191,7 +182,6 @@ Hoàn thiện nền tảng Backend và Frontend cơ bản, đồng thời triể
 | Kiểm thử API | Cả nhóm | Các API chính hoạt động | P0 |
 | Review và cập nhật tài liệu | Cả nhóm | Tài liệu đồng bộ với triển khai | P1 |
 
----
 
 ## 7. Tiêu chí hoàn thành cuối tuần
 
@@ -205,19 +195,12 @@ Hoàn thiện nền tảng Backend và Frontend cơ bản, đồng thời triể
 - Có kiểm thử các API trọng tâm bằng Postman.
 - Các thay đổi được commit và push lên GitHub.
 
----
 
 ## 8. Kết luận
 
-Trong tuần 12, nhóm tập trung vào phân tích yêu cầu,
-xác định phạm vi MVP, thiết kế tài nguyên, kiến trúc hệ thống
-và API Contract cho RentMate.
+Trong tuần 12, nhóm tập trung vào phân tích yêu cầu, xác định phạm vi MVP, thiết kế tài nguyên, kiến trúc hệ thống và API Contract cho RentMate.
 
-Trong tuần tiếp theo, nhóm chuyển trọng tâm sang triển khai,
-ưu tiên Backend Core, Rental Business Logic và Frontend cơ bản.
-Mục tiêu là tạo ra các thành phần có thể chạy độc lập,
+Trong tuần tiếp theo, nhóm chuyển trọng tâm sang triển khai, ưu tiên Backend Core, Rental Business Logic và Frontend cơ bản. Mục tiêu là tạo ra các thành phần có thể chạy độc lập,
 sau đó tích hợp để hoàn thiện luồng thuê đồ dùng cốt lõi.
 
-Các nhiệm vụ được phân chia theo trách nhiệm của từng thành viên,
-đồng thời dành thời gian chung cho review, tích hợp và kiểm thử
-để đảm bảo tiến độ dự án trong thời gian 4 tuần.
+Các nhiệm vụ được phân chia theo trách nhiệm của từng thành viên, đồng thời dành thời gian chung cho review, tích hợp và kiểm thử để đảm bảo tiến độ dự án trong thời gian 4 tuần.
