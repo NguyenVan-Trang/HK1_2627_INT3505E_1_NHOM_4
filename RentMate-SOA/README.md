@@ -100,27 +100,26 @@ Các chức năng nghiệp vụ được tổ chức thành những module riên
 
 ## 4. Các API chính
 
-Địa chỉ cơ sở của API:
+Địa chỉ cơ sở của API: `http://localhost:5000/api/v1`. Mock server (Prism) chạy tại `http://localhost:4010`.
 
-```text
-http://localhost:5000/api/v1
-```
+| Nhóm | Phương thức | Endpoint | Chức năng |
+|---|---|---|---|
+| Auth | POST | `/auth/register` | Đăng ký tài khoản |
+| Auth | POST | `/auth/login` | Đăng nhập, nhận Bearer token |
+| Items | GET | `/items` | Tìm kiếm, lọc, sắp xếp, phân trang đồ cho thuê |
+| Items | POST | `/items` | Đăng đồ cho thuê |
+| Items | GET | `/items/{itemId}` | Xem chi tiết một món đồ |
+| Items | PATCH | `/items/{itemId}` | Cập nhật hoặc ngừng đăng (ACTIVE/INACTIVE) |
+| Rental Requests | GET | `/rental-requests` | Danh sách yêu cầu của tôi (renter hoặc owner) |
+| Rental Requests | POST | `/rental-requests` | Tạo yêu cầu thuê |
+| Rental Requests | PATCH | `/rental-requests/{requestId}` | Duyệt, từ chối hoặc hủy yêu cầu |
+| Rentals | GET | `/rentals` | Danh sách giao dịch thuê của tôi |
+| Rentals | GET | `/rentals/{rentalId}` | Xem giao dịch thuê |
+| Rentals | PATCH | `/rentals/{rentalId}` | Xác nhận bàn giao, hoàn trả hoặc hủy |
 
-| Phương thức | Endpoint | Chức năng |
-|---|---|---|
-| GET | `/items` | Lấy danh sách đồ dùng cho thuê |
-| GET | `/items/{itemId}` | Xem chi tiết một món đồ |
-| POST | `/rental-requests` | Tạo yêu cầu thuê |
-| PATCH | `/rental-requests/{requestId}` | Chấp nhận hoặc từ chối yêu cầu thuê |
-| GET | `/rentals/{rentalId}` | Xem thông tin giao dịch thuê |
+Quy ước: dữ liệu trả về nằm trong `data`, danh sách có thêm `pagination`; mọi lỗi dùng chung `ErrorResponse` (`error.code`, `error.message`, `error.details`). Mã lỗi: 400 sai định dạng, 401 chưa xác thực, 403 không có quyền, 404 không tìm thấy, 409 xung đột trạng thái hoặc lịch thuê, 422 vi phạm quy tắc nghiệp vụ.
 
-Đặc tả chi tiết các API được lưu tại:
-
-```text
-api/openapi.yaml
-```
-
----
+Đặc tả chi tiết: `api/openapi.yaml`.
 
 ## 5. Luồng nghiệp vụ chính
 
@@ -138,30 +137,26 @@ Quy trình thuê đồ dùng trên RentMate gồm các bước:
 ## 6. Cấu trúc dự án
 
 ```text
-RentMate/
-│
+RentMate-SOA/
 ├── README.md
-│
+├── .spectral.yaml
+├── api/
+│   ├── openapi.yaml
+│   └── swagger-ui.html
 ├── docs/
 │   ├── project-brief.md
 │   ├── resource-model.md
 │   ├── erd.md
 │   ├── architecture.md
-│   ├── progress-report.md
-│   └── slides/
-│       └── design-review-outline.md
-│
-├── api/
-│   ├── openapi.yaml
-│   └── mock/
-│
+│   └── project-plan.md
 └── project/
     ├── backlog.md
     ├── team-assignment.md
-    └── milestones.md
+    ├── milestone.md
+    └── project-progress.md
 ```
 
-Trong quá trình phát triển, nhóm sẽ bổ sung các thư mục `frontend/` và `backend/` để lưu mã nguồn giao diện và máy chủ.
+Trong quá trình phát triển, nhóm sẽ bổ sung các thư mục `frontend/` và `backend/`.
 
 ---
 
@@ -208,15 +203,29 @@ project/team-assignment.md
 
 ## 9. Hướng dẫn xem đặc tả API
 
-Hiện tại, dự án đang ở giai đoạn phân tích yêu cầu và thiết kế API.
+Chạy từ thư mục `RentMate-SOA/`.
 
-Để xem và kiểm tra đặc tả API:
+**Swagger UI:**
 
-1. Truy cập [Swagger Editor](https://editor.swagger.io/).
-2. Mở file `api/openapi.yaml` trong dự án.
-3. Sao chép nội dung file vào Swagger Editor.
-4. Quan sát danh sách API, tham số đầu vào, dữ liệu gửi lên và kết quả trả về.
-5. Kiểm tra các cấu trúc dữ liệu và phương thức xác thực được khai báo.
+```bash
+cd api
+python -m http.server 8080
+```
+
+Mở `http://localhost:8080/swagger-ui.html`.
+
+**Mock server (Prism), không cần backend:**
+
+```bash
+npx @stoplight/prism-cli mock api/openapi.yaml -p 4010
+curl "http://localhost:4010/items"
+```
+
+**Kiểm tra chất lượng contract (Spectral):**
+
+```bash
+npx @stoplight/spectral-cli lint api/openapi.yaml --ruleset .spectral.yaml
+```
 
 Hướng dẫn cài đặt và chạy Frontend, Backend sẽ được bổ sung khi nhóm hoàn thành phần triển khai.
 
@@ -242,9 +251,11 @@ Hướng dẫn cài đặt và chạy Frontend, Backend sẽ được bổ sung 
 - [x] Mô hình tài nguyên (Resource Model).
 - [x] Sơ đồ thực thể và mối quan hệ (ERD).
 - [x] Thiết kế kiến trúc hệ thống.
-- [x] Đặc tả API bằng OpenAPI.
+- [x] Đặc tả API bằng OpenAPI (12 operation, Spectral không lỗi).
+- [x] Swagger UI và mock server (Prism).
 - [x] Phân công công việc nhóm.
 - [x] Danh sách công việc cần thực hiện (Backlog).
+- [x] Kế hoạch tuần 13–15 và mốc dự án.
 
 ### Các nội dung chưa thực hiện
 

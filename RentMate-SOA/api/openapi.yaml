@@ -1,31 +1,108 @@
-
 openapi: 3.0.3
 
 info:
   title: RentMate API
   version: 1.0.0
+  contact:
+    name: RentMate team (Nhom 4, INT3505E)
+    url: https://github.com/NguyenVan-Trang/HK1_2627_INT3505E_1_NHOM_4
   description: |
-    Core API for RentMate - a peer-to-peer rental marketplace.
-    This API focuses on the main item discovery and rental workflow.
+    API for RentMate, a peer-to-peer rental marketplace.
+
+    Core business flow: browse items, send a rental request, the owner approves
+    or rejects it, an approved request creates exactly one rental, and the owner
+    confirms handover and return.
+
+    Conventions:
+    - Resources are identified by UUID and exchanged as JSON with camelCase properties.
+    - Successful responses wrap the payload in `data`. Lists also carry `pagination`.
+    - Every error uses the shared `ErrorResponse` schema.
+    - 400 means a malformed request, 401 a missing or invalid token, 403 a forbidden action,
+      404 an unknown resource, 409 a conflict with the current state or schedule,
+      and 422 a request that is well formed but breaks a business rule.
 
 servers:
   - url: http://localhost:5000/api/v1
     description: Local development server
+  - url: http://localhost:4010
+    description: Local mock server (Prism)
 
 tags:
+  - name: Auth
+    description: Register and obtain an access token
   - name: Items
-    description: Browse rental items
+    description: Browse and manage rental items
   - name: Rental Requests
-    description: Create and manage rental requests
+    description: Create and decide rental requests
   - name: Rentals
-    description: View rental transactions
+    description: Track rental transactions
 
 paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new account
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              fullName: Nguyen Van A
+              email: a@example.com
+              password: Str0ngPass!
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in and get an access token
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: a@example.com
+              password: Str0ngPass!
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuthToken'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /items:
     get:
-      tags:
-        - Items
-      summary: Get all available items
+      tags: [Items]
+      summary: Search available items
       operationId: listItems
       parameters:
         - name: q
@@ -37,6 +114,27 @@ paths:
           in: query
           schema:
             type: string
+        - name: minPrice
+          in: query
+          description: Minimum daily price
+          schema:
+            type: number
+            minimum: 0
+        - name: maxPrice
+          in: query
+          description: Maximum daily price
+          schema:
+            type: number
+            minimum: 0
+        - name: sort
+          in: query
+          description: Sort field, prefix with `-` for descending order
+          schema:
+            type: string
+            enum: [dailyPrice, -dailyPrice, createdAt, -createdAt]
+            default: -createdAt
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
       responses:
         '200':
           description: Items retrieved successfully
@@ -44,25 +142,75 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [data, pagination]
                 properties:
                   data:
                     type: array
                     items:
                       $ref: '#/components/schemas/Item'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+              example:
+                data:
+                  - itemId: 550e8400-e29b-41d4-a716-446655440000
+                    ownerId: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+                    title: Sony A6400 camera
+                    description: Mirrorless camera with 16-50mm lens
+                    category: camera
+                    dailyPrice: 200000
+                    deposit: 2000000
+                    status: ACTIVE
+                    createdAt: '2026-11-20T08:00:00Z'
+                pagination:
+                  page: 1
+                  limit: 10
+                  total: 1
+                  totalPages: 1
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags: [Items]
+      summary: Publish a new item
+      operationId: createItem
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemCreate'
+            example:
+              title: Sony A6400 camera
+              description: Mirrorless camera with 16-50mm lens
+              category: camera
+              dailyPrice: 200000
+              deposit: 2000000
+      responses:
+        '201':
+          description: Item created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Item'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
 
   /items/{itemId}:
+    parameters:
+      - $ref: '#/components/parameters/ItemId'
     get:
-      tags:
-        - Items
+      tags: [Items]
       summary: Get item details
       operationId: getItem
-      parameters:
-        - name: itemId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       responses:
         '200':
           description: Item details retrieved successfully
@@ -70,16 +218,93 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [data]
                 properties:
                   data:
                     $ref: '#/components/schemas/Item'
         '404':
-          description: Item not found
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Items]
+      summary: Update an item or switch it between ACTIVE and INACTIVE
+      operationId: updateItem
+      description: Only the owner of the item can update it. Items are never deleted, only set to INACTIVE.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemUpdate'
+            example:
+              status: INACTIVE
+      responses:
+        '200':
+          description: Item updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Item'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
 
   /rental-requests:
+    get:
+      tags: [Rental Requests]
+      summary: List my rental requests
+      operationId: listRentalRequests
+      description: |
+        Returns requests sent by the current user (`role=renter`) or
+        requests received for the current user's items (`role=owner`).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [renter, owner]
+            default: renter
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/RentalRequestStatus'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Rental requests retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, pagination]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RentalRequest'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     post:
-      tags:
-        - Rental Requests
+      tags: [Rental Requests]
       summary: Create a rental request
       operationId: createRentalRequest
       security:
@@ -102,46 +327,50 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [data]
                 properties:
                   data:
                     $ref: '#/components/schemas/RentalRequest'
         '400':
-          description: Invalid rental request
+          $ref: '#/components/responses/BadRequest'
         '401':
-          description: Authentication required
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
-          description: Rental period is unavailable
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
 
   /rental-requests/{requestId}:
+    parameters:
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
     patch:
-      tags:
-        - Rental Requests
-      summary: Approve or reject a rental request
+      tags: [Rental Requests]
+      summary: Approve, reject or cancel a rental request
       operationId: decideRentalRequest
-      description: Only the owner of the item can make this decision.
+      description: |
+        The item owner can set `APPROVED` or `REJECTED`. The renter can set `CANCELLED`.
+        Only requests in `PENDING` can be changed. Approving re-checks the schedule in one
+        transaction and creates exactly one rental.
       security:
         - bearerAuth: []
-      parameters:
-        - name: requestId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required:
-                - decision
+              required: [decision]
               properties:
                 decision:
                   type: string
-                  enum:
-                    - APPROVED
-                    - REJECTED
+                  enum: [APPROVED, REJECTED, CANCELLED]
                 ownerNote:
                   type: string
             example:
@@ -149,43 +378,86 @@ paths:
               ownerNote: Your request is accepted.
       responses:
         '200':
-          description: Rental request decision processed
+          description: Decision processed. `rental` is present only when the request was approved.
           content:
             application/json:
               schema:
                 type: object
+                required: [data]
                 properties:
                   data:
                     type: object
+                    required: [request]
                     properties:
                       request:
                         $ref: '#/components/schemas/RentalRequest'
                       rental:
                         $ref: '#/components/schemas/Rental'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
-          description: Authentication required
+          $ref: '#/components/responses/Unauthorized'
         '403':
-          description: Only the item owner can decide this request
+          $ref: '#/components/responses/Forbidden'
         '404':
-          description: Rental request not found
+          $ref: '#/components/responses/NotFound'
         '409':
-          description: Request is no longer pending or rental period conflicts
+          $ref: '#/components/responses/Conflict'
+
+  /rentals:
+    get:
+      tags: [Rentals]
+      summary: List my rentals
+      operationId: listRentals
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [renter, owner]
+            default: renter
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/RentalStatus'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Rentals retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, pagination]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Rental'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /rentals/{rentalId}:
+    parameters:
+      - name: rentalId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
     get:
-      tags:
-        - Rentals
+      tags: [Rentals]
       summary: Get rental details
       operationId: getRental
       security:
         - bearerAuth: []
-      parameters:
-        - name: rentalId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       responses:
         '200':
           description: Rental details retrieved successfully
@@ -193,15 +465,60 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [data]
                 properties:
                   data:
                     $ref: '#/components/schemas/Rental'
         '401':
-          description: Authentication required
+          $ref: '#/components/responses/Unauthorized'
         '403':
-          description: User is not involved in this rental
+          $ref: '#/components/responses/Forbidden'
         '404':
-          description: Rental not found
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Rentals]
+      summary: Confirm handover, return or cancellation
+      operationId: updateRentalStatus
+      description: |
+        The owner confirms handover (`CONFIRMED` to `ACTIVE`) and return (`ACTIVE` to `COMPLETED`).
+        Cancelling (`CONFIRMED` to `CANCELLED`) is allowed before handover.
+        A completed rental cannot return to `ACTIVE`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [ACTIVE, COMPLETED, CANCELLED]
+            example:
+              status: ACTIVE
+      responses:
+        '200':
+          description: Rental status updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Rental'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
 
 components:
   securitySchemes:
@@ -210,16 +527,202 @@ components:
       scheme: bearer
       bearerFormat: JWT
 
+  parameters:
+    ItemId:
+      name: itemId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+
+  responses:
+    BadRequest:
+      description: Malformed request or invalid parameter
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: BAD_REQUEST
+              message: Request validation failed
+              details:
+                - field: startDate
+                  issue: must be a date in YYYY-MM-DD format
+    Unauthorized:
+      description: Missing, invalid or expired token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: UNAUTHORIZED
+              message: Authentication required
+    Forbidden:
+      description: The user is not allowed to perform this action
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: FORBIDDEN
+              message: Only the item owner can decide this request
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: NOT_FOUND
+              message: Resource not found
+    Conflict:
+      description: Conflict with the current state or rental schedule
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: RENTAL_PERIOD_CONFLICT
+              message: The item is already rented in the selected period
+    UnprocessableEntity:
+      description: Well formed request that breaks a business rule
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: BUSINESS_RULE_VIOLATION
+              message: startDate must be on or before endDate
+
   schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Stable machine-readable error code
+            message:
+              type: string
+              description: Human-readable explanation
+            details:
+              type: array
+              items:
+                type: object
+                required: [field, issue]
+                properties:
+                  field:
+                    type: string
+                  issue:
+                    type: string
+
+    Pagination:
+      type: object
+      required: [page, limit, total, totalPages]
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+
+    RegisterRequest:
+      type: object
+      required: [fullName, email, password]
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 8
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    AuthToken:
+      type: object
+      required: [accessToken, tokenType, expiresIn, user]
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          example: Bearer
+        expiresIn:
+          type: integer
+          description: Token lifetime in seconds
+          example: 3600
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      required: [userId, fullName, email, role]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [RENTER, OWNER, ADMIN]
+        createdAt:
+          type: string
+          format: date-time
+
+    ItemStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE]
+
     Item:
       type: object
-      required:
-        - itemId
-        - ownerId
-        - title
-        - category
-        - dailyPrice
-        - status
+      required: [itemId, ownerId, title, category, dailyPrice, status]
       properties:
         itemId:
           type: string
@@ -240,17 +743,57 @@ components:
           type: number
           minimum: 0
         status:
+          $ref: '#/components/schemas/ItemStatus'
+        createdAt:
           type: string
-          enum:
-            - ACTIVE
-            - INACTIVE
+          format: date-time
+
+    ItemCreate:
+      type: object
+      required: [title, category, dailyPrice]
+      properties:
+        title:
+          type: string
+          minLength: 2
+        description:
+          type: string
+        category:
+          type: string
+        dailyPrice:
+          type: number
+          minimum: 0.01
+        deposit:
+          type: number
+          minimum: 0
+          default: 0
+
+    ItemUpdate:
+      type: object
+      minProperties: 1
+      properties:
+        title:
+          type: string
+          minLength: 2
+        description:
+          type: string
+        category:
+          type: string
+        dailyPrice:
+          type: number
+          minimum: 0.01
+        deposit:
+          type: number
+          minimum: 0
+        status:
+          $ref: '#/components/schemas/ItemStatus'
+
+    RentalRequestStatus:
+      type: string
+      enum: [PENDING, APPROVED, REJECTED, CANCELLED]
 
     RentalRequestCreate:
       type: object
-      required:
-        - itemId
-        - startDate
-        - endDate
+      required: [itemId, startDate, endDate]
       properties:
         itemId:
           type: string
@@ -266,13 +809,16 @@ components:
 
     RentalRequest:
       type: object
-      required:
-        - requestId
-        - itemId
-        - renterId
-        - startDate
-        - endDate
-        - status
+      example:
+        requestId: 3b241101-e2bb-4255-8caf-4136c566a962
+        itemId: 550e8400-e29b-41d4-a716-446655440000
+        renterId: 9b2f1f3e-5c1a-4a54-8d3c-2f6f0a1b7c11
+        startDate: '2026-12-01'
+        endDate: '2026-12-05'
+        status: PENDING
+        message: I would like to rent this item.
+        createdAt: '2026-11-25T03:00:00Z'
+      required: [requestId, itemId, renterId, startDate, endDate, status]
       properties:
         requestId:
           type: string
@@ -290,23 +836,33 @@ components:
           type: string
           format: date
         status:
-          type: string
-          enum:
-            - PENDING
-            - APPROVED
-            - REJECTED
+          $ref: '#/components/schemas/RentalRequestStatus'
         message:
           type: string
+        ownerNote:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    RentalStatus:
+      type: string
+      enum: [CONFIRMED, ACTIVE, COMPLETED, CANCELLED]
 
     Rental:
       type: object
-      required:
-        - rentalId
-        - requestId
-        - itemId
-        - renterId
-        - ownerId
-        - status
+      example:
+        rentalId: 6f1c7f5a-3d2b-4c1e-9a0b-1e2d3c4b5a69
+        requestId: 3b241101-e2bb-4255-8caf-4136c566a962
+        itemId: 550e8400-e29b-41d4-a716-446655440000
+        renterId: 9b2f1f3e-5c1a-4a54-8d3c-2f6f0a1b7c11
+        ownerId: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+        startDate: '2026-12-01'
+        endDate: '2026-12-05'
+        status: CONFIRMED
+        approvedAt: '2026-11-26T02:00:00Z'
+        returnedAt: null
+      required: [rentalId, requestId, itemId, renterId, ownerId, startDate, endDate, status]
       properties:
         rentalId:
           type: string
@@ -330,9 +886,11 @@ components:
           type: string
           format: date
         status:
+          $ref: '#/components/schemas/RentalStatus'
+        approvedAt:
           type: string
-          enum:
-            - CONFIRMED
-            - ACTIVE
-            - COMPLETED
-            - CANCELLED
+          format: date-time
+        returnedAt:
+          type: string
+          format: date-time
+          nullable: true
